@@ -21,9 +21,8 @@ class CreateUserAccountLogsTable extends Migration
             $table->string('type', 20);
             $table->decimal('variable', 20, 3);
             $table->decimal('balance', 20, 3);
-            $table->string('remark')->nullable();
             $table->timestamps();
-            $table->text('source', 65535)->nullable();
+            $table->text('source')->nullable();
             $table->boolean('status')->default(0);
             $table->index(['user_id', 'status'], 'user_free');
         });

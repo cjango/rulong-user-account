@@ -2,7 +2,9 @@
 
 namespace RuLong\UserAccount;
 
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider as LaravelServiceProvider;
+use RuLong\UserAccount\Events\UserCreated;
 
 class ServiceProvider extends LaravelServiceProvider
 {
@@ -20,7 +22,7 @@ class ServiceProvider extends LaravelServiceProvider
             $this->loadMigrationsFrom(__DIR__ . '/../database/migrations/');
 
             $this->commands([
-                Commands\InitAccount::class,
+                Commands\InitAccounts::class,
             ]);
         }
     }
@@ -34,5 +36,15 @@ class ServiceProvider extends LaravelServiceProvider
     public function register()
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/user_account.php', 'user_account');
+
+        $this->registerEvents();
+    }
+
+    public function registerEvents()
+    {
+        // 直接监听基础用户模型的创建事件
+        Event::listen("eloquent.created: " . config('user_account.user_model'), function ($user) {
+            event(new UserCreated($user));
+        });
     }
 }

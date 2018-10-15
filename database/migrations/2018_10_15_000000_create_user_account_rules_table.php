@@ -17,7 +17,7 @@ class CreateUserAccountRulesTable extends Migration
         Schema::create('user_account_rules', function (Blueprint $table) {
             $table->increments('id');
             $table->string('title', 50);
-            $table->string('name', 50);
+            $table->string('name', 50)->index();
             $table->string('type', 20);
             $table->decimal('variable', 20, 3);
             $table->integer('trigger');

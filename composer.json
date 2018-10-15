@@ -23,6 +23,7 @@
                 "RuLong\\UserAccount\\ServiceProvider"
             ],
             "aliases": {
+                "Account": "RuLong\\UserAccount\\Facades\\Account",
                 "AccountRule": "RuLong\\UserAccount\\Facades\\AccountRule"
             }
         }
