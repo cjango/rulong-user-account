@@ -14,14 +14,17 @@
     },
     "autoload": {
         "psr-0": {
-            "RuLong\\UserRelation": "src/"
+            "RuLong\\UserAccount": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "RuLong\\UserRelation\\ServiceProvider"
-            ]
+                "RuLong\\UserAccount\\ServiceProvider"
+            ],
+            "aliases": {
+                "AccountRule": "RuLong\\UserAccount\\Facades\\AccountRule"
+            }
         }
     }
 }
