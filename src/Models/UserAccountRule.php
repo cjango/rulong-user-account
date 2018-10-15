@@ -4,12 +4,12 @@ namespace RuLong\UserAccount\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class UserAccount extends Model
+class UserAccountRule extends Model
 {
     protected $guarded = [];
 
     public function logs()
     {
-        return $this->hasMany(UserAccountLog::class, 'user_id', 'user_id');
+        return $this->hasMany(UserAccountLog::class, 'rule_id');
     }
 }
