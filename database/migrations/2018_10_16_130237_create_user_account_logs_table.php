@@ -21,10 +21,11 @@ class CreateUserAccountLogsTable extends Migration
             $table->string('type', 20);
             $table->decimal('variable', 20, 3);
             $table->decimal('balance', 20, 3);
-            $table->timestamps();
+            $table->boolean('frozen')->default(0);
             $table->text('source')->nullable();
-            $table->boolean('status')->default(0);
-            $table->index(['user_id', 'status'], 'user_free');
+            $table->timestamps();
+            $table->index(['user_id', 'rule_id', 'created_at'], 'trigger_key');
+            $table->index(['user_id', 'frozen'], 'user_frozen');
         });
     }
 

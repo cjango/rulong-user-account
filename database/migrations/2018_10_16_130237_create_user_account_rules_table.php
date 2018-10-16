@@ -17,11 +17,12 @@ class CreateUserAccountRulesTable extends Migration
         Schema::create('user_account_rules', function (Blueprint $table) {
             $table->increments('id');
             $table->string('title', 50);
-            $table->string('name', 50)->index();
+            $table->string('name', 50)->index('name');
             $table->string('type', 20);
-            $table->decimal('variable', 20, 3);
-            $table->integer('trigger');
-            $table->string('remark');
+            $table->decimal('variable', 20, 3)->default(0.000);
+            $table->integer('trigger')->default(0);
+            $table->boolean('deductions')->default(0);
+            $table->string('remark')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

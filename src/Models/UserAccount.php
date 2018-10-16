@@ -14,4 +14,9 @@ class UserAccount extends Model
     {
         return $this->hasMany(UserAccountLog::class, 'user_id', 'user_id');
     }
+
+    public function user()
+    {
+        return $this->belongsTo(config('user_account.user_model'));
+    }
 }
