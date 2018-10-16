@@ -72,3 +72,21 @@ AccountRule::update(UserAccountRule $rule, $data);
 // 删除规则
 AccountRule::destroy($id);
 ~~~
+
+## 7.事件
+~~~
+// 扣除账户余额
+AccountDecreased($account, $log);
+// 增加账户余额
+AccountIncreased($account, $log);
+// 账户记录冻结
+AccountLogFrozened($log);
+// 账户记录解冻
+AccountLogThawed($account, $log);
+// 账户规则执行完毕
+AccountRuleExecuted($account, $log);
+// 账户转账完成
+AccountTransfered($fromUser, $toUser, $fromLog, $toLog);
+// 用户注册完成
+UserCreated($user);
+~~~
