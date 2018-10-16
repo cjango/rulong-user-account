@@ -5,6 +5,12 @@ namespace RuLong\UserAccount;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use RuLong\UserAccount\Events\AccountDecreased;
+use RuLong\UserAccount\Events\AccountIncreased;
+use RuLong\UserAccount\Events\AccountLogFrozened;
+use RuLong\UserAccount\Events\AccountLogThawed;
+use RuLong\UserAccount\Events\AccountRuleExecuted;
+use RuLong\UserAccount\Events\AccountTransfered;
 use RuLong\UserAccount\Exceptions\ExecuteRuleException;
 use RuLong\UserAccount\Models\UserAccountLog;
 use RuLong\UserAccount\Models\UserAccountRule;
@@ -39,13 +45,13 @@ class Account
 
         if ($rule->trigger == 0) {
             // 不限制执行的
-            return $this->accountExecte($user, $rule, $variable, $frozen, $source);
+            return $this->accountExecute($user, $rule, $variable, $frozen, $source);
         } elseif ($rule->trigger > $user->account->logs()->where('rule_id', $rule->id)->whereDate('created_at', Carbon::today())->count()) {
             // 每日执行 trigger 次
-            return $this->accountExecte($user, $rule, $variable, $frozen, $source);
+            return $this->accountExecute($user, $rule, $variable, $frozen, $source);
         } elseif ($rule->trigger < 0 && !$user->account->logs()->where('rule_id', $rule->id)->first()) {
             // 终身只能执行一次
-            return $this->accountExecte($user, $rule, $variable, $frozen, $source);
+            return $this->accountExecute($user, $rule, $variable, $frozen, $source);
         }
 
         throw new ExecuteRuleException('达到最大可执行次数');
@@ -68,6 +74,8 @@ class Account
                     $log->balance = $log->account->{$log->type};
                     $log->save();
                 });
+
+                event(new AccountLogThawed($log));
 
                 return true;
             } else {
@@ -95,6 +103,8 @@ class Account
                     $log->balance = $log->account->{$log->type};
                     $log->save();
                 });
+
+                event(new AccountLogFrozened($log));
 
                 return true;
             } else {
@@ -132,24 +142,28 @@ class Account
         DB::transaction(function () use ($fromUser, $toUser, $type, $variable) {
             $feature = Str::uuid();
             $fromUser->account->decrement($type, $variable);
-            $fromUser->account->logs()->create([
+            $fromLog = [
                 'rule_id'  => 0,
                 'type'     => $type,
                 'variable' => -$variable,
                 'frozen'   => 0,
                 'balance'  => $fromUser->account->{$type},
                 'source'   => ['type' => 'transfer', 'fromUser' => $fromUser->id, 'toUser' => $toUser->id, 'feature' => $feature],
-            ]);
+            ];
+            $fromUser->account->logs()->create($fromLog);
 
             $toUser->account->increment($type, $variable);
-            $toUser->account->logs()->create([
+            $toLog = [
                 'rule_id'  => 0,
                 'type'     => $type,
                 'variable' => $variable,
                 'frozen'   => 0,
                 'balance'  => $toUser->account->{$type},
                 'source'   => ['type' => 'transfer', 'fromUser' => $fromUser->id, 'toUser' => $toUser->id, 'feature' => $feature],
-            ]);
+            ];
+            $toUser->account->logs()->create($toLog);
+
+            event(new AccountTransfered($fromUser->account, $toUser->account, $fromLog, $toLog));
         });
 
         return true;
@@ -172,14 +186,17 @@ class Account
         DB::transaction(function () use ($user, $type, $variable) {
             $user->account->increment($type, $variable);
 
-            $user->account->logs()->create([
+            $log = [
                 'rule_id'  => 0,
                 'type'     => $type,
                 'variable' => $variable,
                 'frozen'   => 0,
                 'balance'  => $user->account->{$type},
                 'source'   => ['type' => 'increase'],
-            ]);
+            ];
+            $user->account->logs()->create($log);
+
+            event(new AccountIncreased($this->account, $log));
         });
 
         return true;
@@ -207,14 +224,18 @@ class Account
         DB::transaction(function () use ($user, $type, $variable) {
             $user->account->decrement($type, $variable);
 
-            $user->account->logs()->create([
+            $log = [
                 'rule_id'  => 0,
                 'type'     => $type,
                 'variable' => -$variable,
                 'frozen'   => 0,
                 'balance'  => $user->account->{$type},
                 'source'   => ['type' => 'deduct'],
-            ]);
+            ];
+            $user->account->logs()->create($log);
+
+            event(new AccountDecreased($this->account, $log));
+
         });
 
         return true;
@@ -262,7 +283,7 @@ class Account
      * @param array       $source   溯源信息
      * @return ExecuteRuleException|boolean
      */
-    private function accountExecte($user, UserAccountRule $rule, $variable, $frozen, $source)
+    private function accountExecute($user, UserAccountRule $rule, $variable, $frozen, $source)
     {
         try {
             if ($variable != 0) {
@@ -280,16 +301,18 @@ class Account
                     $user->account->increment($rule->type, $rule->variable);
                     $frozen = false;
                 }
-
-                // 写入记录
-                $user->account->logs()->create([
+                $log = [
                     'rule_id'  => $rule->id,
                     'type'     => $rule->type,
                     'variable' => $rule->variable,
                     'frozen'   => $frozen,
                     'balance'  => $user->account->{$rule->type},
                     'source'   => $source ?: null,
-                ]);
+                ];
+                // 写入记录
+                $user->account->logs()->create($log);
+
+                event(new AccountRuleExecuted($user->account, $log));
             });
 
             return true;
